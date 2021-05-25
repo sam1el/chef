@@ -104,6 +104,11 @@ end
 
 homebrew_cask "do-not-disturb"
 
+hostname 'awesome_chef-mac01' do
+  localhostname 'this_is_my-mac01'
+  action :custom
+end
+
 include_recipe "::_dmg_package"
 include_recipe "::_macos_userdefaults"
 include_recipe "::_ohai_hint"
