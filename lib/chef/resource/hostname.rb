@@ -97,7 +97,7 @@ class Chef
         default: true
 
       property :domain_user, String,
-        description: "A domain account specified in the form of DOMAIN\\user used when renaming a domain-joined device",
+        description: "A domain account specified in the form of `DOMAIN\\user` used when renaming a domain-joined device",
         introduced: "17.3"
 
       property :domain_password, String,
@@ -106,11 +106,11 @@ class Chef
         introduced: "17.3"
 
       property :computername, String,
-        description: "Allows the option to set the computer name separate from the hostname. Will default to hostname. The user-friendly name for the system.",
+        description: "Allows the option to set the computer name separate from the hostname on MacOs. The user-friendly name for the system.",
         introduced: "17.3"
 
       property :localhostname, String,
-        description: "Allows you to set the local hostname. Your computer’s local hostname, or local network name, is displayed on your local network so others on the network can connect to your Mac. It also identifies your Mac to Bonjour-compatible services. (Airdrop etc)",
+        description: "Allows you to set the local hostname. Your computer’s local hostname, or local network name, is displayed on your local network so others on the network can connect to your Mac. It also identifies your Mac to Bonjour-compatible services such as Airdrop, etc.",
         introduced: "17.3"
 
       action_class do
@@ -179,21 +179,46 @@ class Chef
           case
           when darwin?
             # darwin
-            execute "set HostName via scutil" do
-              command "/usr/sbin/scutil --set HostName #{new_resource.hostname}"
-              not_if { shell_out("/usr/sbin/scutil --get HostName").stdout.chomp == new_resource.hostname }
-              notifies :reload, "ohai[reload hostname]"
-            end
-            execute "set ComputerName via scutil" do
-              command "/usr/sbin/scutil --set ComputerName  #{new_resource.hostname}"
-              not_if { shell_out("/usr/sbin/scutil --get ComputerName").stdout.chomp == new_resource.hostname }
-              notifies :reload, "ohai[reload hostname]"
-            end
-            shortname = new_resource.hostname[/[^\.]*/]
-            execute "set LocalHostName via scutil" do
-              command "/usr/sbin/scutil --set LocalHostName #{shortname}"
-              not_if { shell_out("/usr/sbin/scutil --get LocalHostName").stdout.chomp == shortname }
-              notifies :reload, "ohai[reload hostname]"
+            if new_resource.hostname && !new_resource.localhostname || !new_resource.computername
+              execute "set HostName via scutil" do
+                command "/usr/sbin/scutil --set HostName #{new_resource.hostname}"
+                not_if { shell_out("/usr/sbin/scutil --get HostName").stdout.chomp == new_resource.hostname }
+                notifies :reload, "ohai[reload hostname]"
+              end
+              execute "set ComputerName via scutil" do
+                command "/usr/sbin/scutil --set ComputerName  #{new_resource.hostname}"
+                not_if { shell_out("/usr/sbin/scutil --get ComputerName").stdout.chomp == new_resource.hostname }
+                notifies :reload, "ohai[reload hostname]"
+              end
+              shortname = new_resource.hostname[/[^\.]*/]
+              execute "set LocalHostName via scutil" do
+                command "/usr/sbin/scutil --set LocalHostName #{shortname}"
+                not_if { shell_out("/usr/sbin/scutil --get LocalHostName").stdout.chomp == shortname }
+                notifies :reload, "ohai[reload hostname]"
+              end
+            else
+              if new_resource.localhostname
+                shortname = new_resource.localhostname[/[^\.]*/]
+                execute "set LocalHostName via scutil" do
+                  command "/usr/sbin/scutil --set LocalHostName #{shortname}"
+                  not_if { shell_out("/usr/sbin/scutil --get LocalHostName").stdout.chomp == shortname }
+                  notifies :reload, "ohai[reload hostname]"
+                end
+              end
+              if new_resource.computername
+                execute "set ComputerName via scutil" do
+                  command "/usr/sbin/scutil --set ComputerName #{new_resource.computername}"
+                  not_if { shell_out("/usr/sbin/scutil --get ComputerName").stdout.chomp == new_resource.computername }
+                  notifies :reload, "ohai[reload hostname]"
+                end
+              end
+              if new_resource.hostname
+                execute "set HostName via scutil" do
+                  command "/usr/sbin/scutil --set HostName #{new_resource.hostname}"
+                  not_if { shell_out("/usr/sbin/scutil --get HostName").stdout.chomp == new_resource.hostname }
+                  notifies :reload, "ohai[reload hostname]"
+                end
+              end
             end
           when linux?
             case
@@ -316,34 +341,6 @@ class Chef
           end
         end
       end
-
-      action :custom, description: "Only changes specified system name **MacOs**" do
-        if macos?
-          if new_resource.localhostname
-            shortname = new_resource.localhostname[/[^\.]*/]
-            execute "set LocalHostName via scutil" do
-              command "/usr/sbin/scutil --set LocalHostName #{shortname}"
-              not_if { shell_out("/usr/sbin/scutil --get LocalHostName").stdout.chomp == shortname }
-              notifies :reload, "ohai[reload hostname]"
-            end
-          end
-          if new_resource.computername
-            execute "set ComputerName via scutil" do
-              command "/usr/sbin/scutil --set ComputerName #{new_resource.computername}"
-              not_if { shell_out("/usr/sbin/scutil --get ComputerName").stdout.chomp == new_resource.computername }
-              notifies :reload, "ohai[reload hostname]"
-            end
-          end
-          if new_resource.hostname
-            execute "set HostName via scutil" do
-              command "/usr/sbin/scutil --set HostName #{new_resource.hostname}"
-              not_if { shell_out("/usr/sbin/scutil --get HostName").stdout.chomp == new_resource.hostname }
-              notifies :reload, "ohai[reload hostname]"
-            end
-          end
-        end
-      end
-      default_action :set
     end
   end
 end
