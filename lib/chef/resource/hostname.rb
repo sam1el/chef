@@ -63,6 +63,8 @@ class Chef
         end
         ```
 
+        **Chance the hostname and localhostname to different names on macos**
+
         ```ruby
         hostname 'awesome_chef-mac01' do
           localhostname 'this_is_my-mac01'
@@ -341,34 +343,6 @@ class Chef
           end
         end
       end
-
-      action :custom, description: "Only changes specified system name **MacOs**" do
-        if macos?
-          if new_resource.localhostname
-            shortname = new_resource.localhostname[/[^\.]*/]
-            execute "set LocalHostName via scutil" do
-              command "/usr/sbin/scutil --set LocalHostName #{shortname}"
-              not_if { shell_out("/usr/sbin/scutil --get LocalHostName").stdout.chomp == shortname }
-              notifies :reload, "ohai[reload hostname]"
-            end
-          end
-          if new_resource.computername
-            execute "set ComputerName via scutil" do
-              command "/usr/sbin/scutil --set ComputerName #{new_resource.computername}"
-              not_if { shell_out("/usr/sbin/scutil --get ComputerName").stdout.chomp == new_resource.computername }
-              notifies :reload, "ohai[reload hostname]"
-            end
-          end
-          if new_resource.hostname
-            execute "set HostName via scutil" do
-              command "/usr/sbin/scutil --set HostName #{new_resource.hostname}"
-              not_if { shell_out("/usr/sbin/scutil --get HostName").stdout.chomp == new_resource.hostname }
-              notifies :reload, "ohai[reload hostname]"
-            end
-          end
-        end
-      end
-      default_action :set
     end
   end
 end
